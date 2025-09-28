@@ -24,7 +24,12 @@ def listar_dispositivos():
 def iniciar_gravacao():
     global processo
     dispositivo = combo.get()
-    nome_arquivo = f"gravacao_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.mp3"
+    
+    nome_musica = get_spotify_track_name()
+    if nome_musica:
+        nome_arquivo = f"{nome_musica}.mp3"
+    else:
+        nome_arquivo = f"gravacao_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.mp3"
 
     comando = [
         "ffmpeg",
@@ -40,12 +45,31 @@ def iniciar_gravacao():
     processo = subprocess.Popen(comando)
     status_label.config(text=f"🎙 Gravando: {nome_arquivo}")
 
+
 def parar_gravacao():
     global processo
     if processo:
         processo.send_signal(signal.SIGINT)  # envia Ctrl+C pro ffmpeg
         processo = None
         status_label.config(text="⏹ Gravação parada.")
+
+
+def get_spotify_track_name():
+    """Captura o nome da música e artista do Spotify."""
+    try:
+        # Tenta obter metadados do Spotify ou outro player compatível
+        saida = subprocess.check_output(
+            ["playerctl", "metadata", "--format", "{{artist}} - {{title}}"]
+        ).decode().strip()
+        if saida:
+            # Remove caracteres inválidos para nome de arquivo
+            nome_arquivo = re.sub(r'[\\/*?:"<>|]', "", saida)
+            return nome_arquivo
+        else:
+            return None
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # playerctl não está instalado ou nenhum player está ativo
+        return None
 
 # UI
 root = tk.Tk()
