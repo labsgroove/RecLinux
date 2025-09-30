@@ -26,7 +26,7 @@ def listar_dispositivos():
         return ["default"]
 
 def iniciar_gravacao(nome_arquivo=None):
-    """Inicia uma gravação com ffmpeg."""
+    """Inicia uma gravação com ffmpeg e dá play na música."""
     global processo
     parar_gravacao()  # Garante que qualquer gravação anterior seja parada
 
@@ -51,6 +51,9 @@ def iniciar_gravacao(nome_arquivo=None):
     ]
 
     try:
+        controlar_multimidia("play")
+        time.sleep(0.5)  # Pausa para sincronia
+
         processo = subprocess.Popen(comando, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         status_label.config(text=f"🎙 Gravando: {nome_arquivo}")
     except Exception as e:
@@ -58,7 +61,7 @@ def iniciar_gravacao(nome_arquivo=None):
 
 
 def parar_gravacao():
-    """Para a gravação ffmpeg se estiver em execução."""
+    """Para a gravação ffmpeg e pausa a música."""
     global processo
     if processo and processo.poll() is None:
         processo.send_signal(signal.SIGINT)
@@ -67,6 +70,7 @@ def parar_gravacao():
         except subprocess.TimeoutExpired:
             processo.kill()
         status_label.config(text="⏹ Gravação parada.")
+        controlar_multimidia("pause")
     processo = None
 
 
@@ -105,9 +109,9 @@ def monitorar_playlist():
         if linha:
             nome_musica_atual = re.sub(r'[\\/*?:"<>|]', "", linha)
             if nome_musica_atual != ultimo_nome_musica:
-                parar_gravacao()
-                time.sleep(1) # Pequena pausa para garantir que tudo foi finalizado
-                iniciar_gravacao(f"{nome_musica_atual}.mp3")
+                parar_gravacao() # Isso já vai pausar a música
+                time.sleep(1) 
+                iniciar_gravacao(f"{nome_musica_atual}.mp3") # Isso já vai dar play
                 ultimo_nome_musica = nome_musica_atual
         else:
             # Se a linha estiver vazia, o player pode ter sido fechado
@@ -147,6 +151,13 @@ def parar_gravacao_playlist():
         btn_parar_playlist.config(state=tk.DISABLED)
         btn_iniciar.config(state=tk.NORMAL)
         btn_parar.config(state=tk.NORMAL)
+
+def controlar_multimidia(acao):
+    """Controla o player de mídia (play/pause)."""
+    try:
+        subprocess.run(["playerctl", acao], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        print(f"Erro ao controlar multimidia ({acao}): {e}")
 
 # --- UI ---
 root = tk.Tk()
